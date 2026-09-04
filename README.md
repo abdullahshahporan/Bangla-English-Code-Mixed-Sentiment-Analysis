@@ -104,7 +104,7 @@ provided setup script, which creates a Python 3.12 environment:
 powershell -ExecutionPolicy Bypass -File .\setup.ps1
 ```
 
-## Final-day teacher interface
+## interface
 
 Start the interface from the project root:
 
@@ -168,17 +168,4 @@ Run these only when the project must be trained again:
 .\.venv\Scripts\python.exe run_project.py finalize
 ```
 
-The notebooks provide the same workflow in the order taught in NLP Labs 1–5.
 
-## Why CSV files remain
-
-CSV is only the storage format for text and results; it is not an ML method.
-Only the essential CSV files remain:
-
-- `dataset.csv`: unchanged corpus
-- `processed_sentiment.csv`: NLP preprocessing output
-- `train.csv`, `validation.csv`, `test.csv`: one fair shared split
-- `metrics.csv`: final experiment comparison
-- `error_analysis.csv`: real errors made by the combined system
-
-During the final demonstration, the teacher does not need to open any CSV file.
