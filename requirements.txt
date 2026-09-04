@@ -1,0 +1,13 @@
+# Use Python 3.11 or 3.12. Gensim does not currently provide the required
+# prebuilt Windows wheel for Python 3.14.
+pandas>=2.2,<3.0
+numpy>=1.26,<3.0
+scikit-learn>=1.5,<2.0
+scipy>=1.13,<2.0
+gensim>=4.3.3,<5.0
+joblib>=1.4,<2.0
+matplotlib>=3.9,<4.0
+torch>=2.4,<3.0
+jupyterlab>=4.2,<5.0
+nltk>=3.9,<4.0
+streamlit>=1.40,<2.0

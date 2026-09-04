@@ -1,0 +1,61 @@
+# ------------------------------------------------------------
+# Local environment and private configuration
+# ------------------------------------------------------------
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+env/
+.python/
+.uv-python/
+.uv-cache/
+
+# ------------------------------------------------------------
+# Python-generated files
+# ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# ------------------------------------------------------------
+# Notebook, plotting, and Streamlit cache
+# ------------------------------------------------------------
+.ipynb_checkpoints/
+.matplotlib/
+.streamlit/secrets.toml
+
+# ------------------------------------------------------------
+# Editors and operating systems
+# ------------------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ------------------------------------------------------------
+# Logs and temporary files
+# ------------------------------------------------------------
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
+# ------------------------------------------------------------
+# Generated model binaries
+# These can be recreated by running the training pipeline.
+# ------------------------------------------------------------
+models/*.pkl
+models/*.pt
+models/*.model
+!models/.gitkeep
