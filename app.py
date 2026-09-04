@@ -1,4 +1,4 @@
-"""Teacher-facing web interface for the NLP sentiment project.
+"""Interactive web interface for the NLP sentiment analysis system.
 
 Start the interface from the project folder with:
     python -m streamlit run app.py
@@ -88,6 +88,6 @@ if st.button("Analyze sentiment", type="primary", use_container_width=True):
                 "commands shown in README.md."
             )
             st.caption(str(error))
-        except Exception as error:  # Keep the classroom demo from closing abruptly.
+        except Exception as error:  # Keep the interactive application responsive.
             st.error("Prediction could not be completed. See the technical message below.")
             st.exception(error)

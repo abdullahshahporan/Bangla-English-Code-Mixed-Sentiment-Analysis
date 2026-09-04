@@ -69,7 +69,7 @@ Write-Host "SETUP COMPLETE" -ForegroundColor Green
 Write-Host "Environment: $environmentPath"
 Write-Host "Python:      $installedVersion"
 Write-Host ""
-Write-Host "Start the teacher interface with:"
+Write-Host "Start the web application with:"
 Write-Host ".\.venv\Scripts\python.exe -m streamlit run app.py" -ForegroundColor Yellow
 
 # Dependency archives can be very large and are no longer needed after a
