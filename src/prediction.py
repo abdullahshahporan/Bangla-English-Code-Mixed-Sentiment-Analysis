@@ -27,6 +27,17 @@ FINAL_NEGATION_PATTERN = re.compile(
     r"(?:na|nai|nei|noy|nah)\s*[.!?]*$"
 )
 
+# "valo-o na, kharap-o na" denies both sentiment directions, so it is
+# neutral. The optional "o" covers common Romanized Bangla spellings.
+POSITIVE_NEGATION_PATTERN = re.compile(
+    r"\b(?:valo|bhalo|good|sundor|darun)\s+"
+    r"(?:o\s+)?(?:na|nai|nei|noy|nah)\b"
+)
+NEGATIVE_NEGATION_PATTERN = re.compile(
+    r"\b(?:kharap|baje|bad|joghonno|worst)\s+"
+    r"(?:o\s+)?(?:na|nai|nei|noy|nah)\b"
+)
+
 MODEL_ORDER = ("tfidf", "word2vec", "bilstm", "transformer")
 ENSEMBLE_WEIGHTS_PATH = MODEL_DIR / "ensemble_weights.json"
 
@@ -324,6 +335,33 @@ class EnsembleSentimentPredictor:
 
         return adjusted_probabilities
 
+    @staticmethod
+    def apply_dual_negation_rule(
+        processed_texts: list[str],
+        probabilities: np.ndarray,
+    ) -> np.ndarray:
+        """Treat 'neither positive nor negative' wording as Neutral."""
+
+        adjusted_probabilities = probabilities.copy()
+        neutral_index = CLASS_NAMES.index("Neutral")
+
+        for index, text in enumerate(processed_texts):
+            if (
+                POSITIVE_NEGATION_PATTERN.search(text)
+                and NEGATIVE_NEGATION_PATTERN.search(text)
+            ):
+                predicted_index = int(
+                    adjusted_probabilities[index].argmax()
+                )
+                if predicted_index != neutral_index:
+                    adjusted_probabilities[index, neutral_index], \
+                        adjusted_probabilities[index, predicted_index] = (
+                            adjusted_probabilities[index, predicted_index],
+                            adjusted_probabilities[index, neutral_index],
+                        )
+
+        return adjusted_probabilities
+
     def combine_component_probabilities(
         self,
         component_probabilities: list[np.ndarray],
@@ -387,6 +425,11 @@ class EnsembleSentimentPredictor:
         combined_probabilities = self.combine_component_probabilities(
             component_probabilities,
             contrast_replacements=contrast_replacements,
+        )
+
+        combined_probabilities = self.apply_dual_negation_rule(
+            processed_texts,
+            combined_probabilities,
         )
 
         return self.apply_final_negation_rule(
