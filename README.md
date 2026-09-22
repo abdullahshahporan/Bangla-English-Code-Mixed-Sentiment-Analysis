@@ -7,14 +7,14 @@ code-mixed text into four sentiment categories: **Positive**, **Negative**,
 The project covers the complete NLP workflow, including corpus preparation,
 text normalization, feature extraction, word embeddings, sequence modelling,
 self-attention, comparative evaluation, and interactive inference. A
-validation-weighted ensemble combines complementary NLP models to produce one
+validation-tuned ensemble combines complementary NLP models to produce one
 final prediction.
 
 ## Key features
 
 - Normalizes noisy Bangla-English user-generated text.
 - Preserves both Bangla and English Unicode characters during preprocessing.
-- Uses complementary sparse, embedding, recurrent, and attention-based models.
+- Uses word and character TF-IDF alongside embedding, recurrent, and attention-based models.
 - Combines four trained models into one final ensemble prediction.
 - Reports accuracy, macro precision, macro recall, and macro F1.
 - Includes confusion matrices and error analysis for model interpretation.
@@ -29,21 +29,44 @@ Input text
     ▼
 Normalization and tokenization
     │
-    ├── TF-IDF + Logistic Regression ─────────────────────┐
+    ├── Word + character TF-IDF + Logistic Regression ────┐
     ├── TF-IDF-weighted Word2Vec + Logistic Regression ───┤
     ├── Bidirectional LSTM ────────────────────────────────┤
     └── Transformer Encoder ───────────────────────────────┤
                                                             ▼
-                             Validation-weighted probability averaging
+                             Validation-tuned probability averaging
                                                             │
                                                             ▼
                             Final sentiment and class probabilities
 ```
 
-Every component processes the same input. Its validation macro F1 score is used
-as its ensemble weight, allowing stronger validation models to contribute more
-to the final probability distribution. Test-set results are not used to select
-or weight the models.
+Every component processes the same input. We tested weights in 5% steps on the
+validation split, requiring every model to contribute at least 5%. The selected
+weights are **85% word-and-character TF-IDF** and **5% each** for Word2Vec,
+BiLSTM, and Transformer. Test-set results were not used to choose the weights.
+Character fragments help recognize spelling variations such as `valo`, `bhalo`,
+and `vhalo` without a hand-written spelling dictionary.
+
+For a sentence containing `but`, `kintu`, or `tobe`, a conservative contrast
+rule can prioritize a clearly stronger negative clause after that word. It
+applies only if the whole sentence was predicted Mixed, the first clause has at
+least 50% Positive probability, and the later clause has at least 70% Negative
+probability and exceeds the first clause's Positive probability by 15 points.
+The clause probabilities come from the word-and-character TF-IDF model. This
+rule makes `chele valo kintu ektu bar e jay mod khay` Negative. It changed no
+labels in the saved validation or test splits, so that example is the direct
+evidence for this application-specific behavior. The corpus often labels text
+with both positive and negative phrases as Mixed.
+
+### Simple explanation for a class presentation
+
+1. Clean the sentence while keeping Bangla and English letters.
+2. Turn words, word pairs, and short character fragments into TF-IDF numbers.
+   Character fragments help when the same Bangla word is typed in different ways.
+3. Four trained models estimate probabilities for Positive, Negative, Neutral,
+   and Mixed. Average them with weights selected using validation data.
+4. If a strong negative clause follows `kintu`, let that clause decide a Mixed
+   result only when it is clearly stronger than the earlier positive clause.
 
 ## Dataset
 
@@ -76,7 +99,7 @@ The system contains only the four models used by the final ensemble:
 
 | Component | Purpose |
 | --- | --- |
-| TF-IDF + Logistic Regression | Captures important unigram and bigram features in a sparse representation |
+| Word + character TF-IDF + Logistic Regression | Captures words, short phrases, and character fragments for spelling variation |
 | TF-IDF-weighted Word2Vec + Logistic Regression | Combines semantic token vectors with corpus-level term importance |
 | Bidirectional LSTM | Reads token sequences in both directions to model word order |
 | Transformer Encoder | Uses position-aware self-attention to model contextual relationships |
@@ -90,7 +113,7 @@ added without a task-specific reason.
 | Lab material | Use in this project | Decision |
 | --- | --- | --- |
 | Regex cleaning and tokenization | Unicode-safe normalization that preserves Bangla, Romanized Bangla, and negation words | Core preprocessing |
-| TF-IDF | Sparse unigram and bigram representation | Used by the ensemble |
+| TF-IDF | Sparse word unigram/bigram and character 3–5 gram features | Used by the ensemble |
 | Logistic Regression | Four-class probability prediction from TF-IDF and weighted Word2Vec vectors | Used by the ensemble |
 | Word2Vec | TF-IDF-weighted semantic document representation | Used by the ensemble |
 | Bidirectional LSTM | Forward and backward sequence modelling | Used by the ensemble |
@@ -109,13 +132,14 @@ The final ensemble is recorded as experiment `M6.1` in
 
 | Metric | Test score |
 | --- | ---: |
-| Accuracy | 0.7192 |
-| Macro precision | 0.7110 |
-| Macro recall | 0.6868 |
-| Macro F1 | 0.6970 |
+| Accuracy | 0.7408 |
+| Macro precision | 0.7457 |
+| Macro recall | 0.6967 |
+| Macro F1 | 0.7143 |
 
 Macro-averaged metrics are emphasized because they give equal importance to all
-four sentiment classes, regardless of class frequency.
+four sentiment classes, regardless of class frequency. In the prior local run,
+the ensemble scored 0.7209 accuracy and 0.6983 macro F1 on the same test split.
 
 ## Repository structure
 
@@ -249,7 +273,7 @@ The same ensemble can be used without the web interface:
 Example output:
 
 ```text
-Model: Validation-weighted NLP ensemble
+Model: Validation-tuned NLP ensemble
 Predicted sentiment: Negative
 Probabilities:
   Positive: ...
@@ -263,7 +287,7 @@ Probabilities:
 The notebooks contain the main project stages in executable order:
 
 1. Text preprocessing and corpus analysis
-2. TF-IDF Logistic Regression
+2. Word-and-character TF-IDF Logistic Regression
 3. TF-IDF-weighted Word2Vec Logistic Regression
 4. Bidirectional LSTM
 5. Transformer encoder

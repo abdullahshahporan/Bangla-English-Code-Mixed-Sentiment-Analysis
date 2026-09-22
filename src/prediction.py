@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -13,11 +15,16 @@ from src.preprocessing import preprocess_text
 from src.word_embeddings import weighted_document_vectors
 
 
+CONTRAST_PATTERN = re.compile(r"\b(?:but|kintu|tobe)\b")
+# Chosen in 5% steps using validation Macro F1. The test set was not used.
+MODEL_WEIGHTS = (0.85, 0.05, 0.05, 0.05)
+
+
 class EnsembleSentimentPredictor:
     """Load the final artifacts once and combine their probabilities.
 
-    Models with a better validation Macro F1 receive a slightly larger weight.
-    The test set is never used to decide these weights.
+    The word-and-character TF-IDF model receives most weight because it gave
+    the best validation results. The other three models still contribute.
     """
 
     def __init__(self) -> None:
@@ -28,15 +35,7 @@ class EnsembleSentimentPredictor:
             self._load_neural_component("transformer"),
         ]
 
-        self.component_weights = np.asarray(
-            [
-                self.tfidf_bundle["validation_macro_f1"],
-                self.word2vec_bundle["validation_macro_f1"],
-                self.neural_components[0]["validation_macro_f1"],
-                self.neural_components[1]["validation_macro_f1"],
-            ],
-            dtype=np.float64,
-        )
+        self.component_weights = np.asarray(MODEL_WEIGHTS, dtype=np.float64)
 
     @staticmethod
     def _load_neural_component(model_type: str) -> dict[str, object]:
@@ -121,6 +120,46 @@ class EnsembleSentimentPredictor:
         probabilities = np.vstack(probability_batches)
         return self._align_probabilities(probabilities, component["classes"])
 
+    def _focus_on_strong_negative_after_contrast(
+        self, processed_texts: list[str], probabilities: np.ndarray
+    ) -> np.ndarray:
+        """Let a clearly stronger negative clause decide some Mixed cases.
+
+        This is an explicit application rule. Corpus labels often call a
+        positive-plus-negative sentence Mixed, even when the later negative
+        clause matters more to the reader.
+        """
+
+        positive_index = CLASS_NAMES.index("Positive")
+        negative_index = CLASS_NAMES.index("Negative")
+        mixed_index = CLASS_NAMES.index("Mixed")
+
+        for index, text in enumerate(processed_texts):
+            if probabilities[index].argmax() != mixed_index:
+                continue
+            match = CONTRAST_PATTERN.search(text)
+            if match is None:
+                continue
+
+            before = text[: match.start()].strip()
+            after = text[match.end() :].strip()
+            if len(before.split()) < 2 or len(after.split()) < 2:
+                continue
+
+            before_probabilities, after_probabilities = self._predict_tfidf(
+                [before, after]
+            )
+            positive_before = before_probabilities[positive_index]
+            negative_after = after_probabilities[negative_index]
+            if (
+                positive_before >= 0.50
+                and negative_after >= 0.70
+                and negative_after - positive_before >= 0.15
+            ):
+                probabilities[index] = after_probabilities
+
+        return probabilities
+
     def predict_probabilities(self, texts: list[str]) -> np.ndarray:
         """Return one combined probability row for every input sentence."""
 
@@ -135,10 +174,13 @@ class EnsembleSentimentPredictor:
             self._predict_neural(processed_texts, self.neural_components[1]),
         ]
 
-        return np.average(
+        combined = np.average(
             np.stack(component_probabilities),
             axis=0,
             weights=self.component_weights,
+        )
+        return self._focus_on_strong_negative_after_contrast(
+            processed_texts, combined
         )
 
     def predict(self, text: str) -> dict[str, object]:
@@ -147,7 +189,7 @@ class EnsembleSentimentPredictor:
         probabilities = self.predict_probabilities([text])[0]
         predicted_index = int(probabilities.argmax())
         return {
-            "model": "Validation-weighted NLP ensemble",
+            "model": "Validation-tuned NLP ensemble",
             "predicted_sentiment": CLASS_NAMES[predicted_index],
             "probabilities": {
                 class_name: float(probability)

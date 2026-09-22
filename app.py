@@ -33,8 +33,9 @@ with st.sidebar:
     st.write("**Classes:** Positive, Negative, Neutral, Mixed")
     st.write("**NLP flow:** Cleaning → Tokenization → Representation → Classification")
     st.info(
-        "The final answer combines TF-IDF, Word2Vec, BiLSTM, and Transformer "
-        "probabilities. No model selection is needed."
+        "The final answer combines word and character TF-IDF, Word2Vec, "
+        "BiLSTM, and Transformer probabilities. A clearly stronger negative "
+        "clause after 'kintu' can decide a Mixed result."
     )
 
 user_text = st.text_area(
