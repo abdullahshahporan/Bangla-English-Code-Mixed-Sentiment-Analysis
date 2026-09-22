@@ -18,6 +18,15 @@ from src.word_embeddings import weighted_document_vectors
 
 CONTRAST_PATTERN = re.compile(r"\b(?:but|kintu|tobe)\b")
 
+# In Romanized Bangla, a final "na" can reverse a negative adjective:
+# "tumi kharap" -> Negative, but "tumi kharap na" -> Positive.
+# Keeping the pattern at the end of the sentence avoids changing longer,
+# mixed statements such as "kharap na, abar temon valo-o na".
+FINAL_NEGATION_PATTERN = re.compile(
+    r"\b(?:kharap|baje|bad|joghonno|worst)\s+"
+    r"(?:na|nai|nei|noy|nah)\s*[.!?]*$"
+)
+
 MODEL_ORDER = ("tfidf", "word2vec", "bilstm", "transformer")
 ENSEMBLE_WEIGHTS_PATH = MODEL_DIR / "ensemble_weights.json"
 
@@ -291,6 +300,30 @@ class EnsembleSentimentPredictor:
 
         return adjusted_probabilities
 
+    @staticmethod
+    def apply_final_negation_rule(
+        processed_texts: list[str],
+        probabilities: np.ndarray,
+    ) -> np.ndarray:
+        """Handle a negative adjective directly negated at sentence end."""
+
+        adjusted_probabilities = probabilities.copy()
+        positive_index = CLASS_NAMES.index("Positive")
+        negative_index = CLASS_NAMES.index("Negative")
+
+        for index, text in enumerate(processed_texts):
+            if (
+                FINAL_NEGATION_PATTERN.search(text)
+                and adjusted_probabilities[index].argmax() == negative_index
+            ):
+                adjusted_probabilities[index, positive_index], \
+                    adjusted_probabilities[index, negative_index] = (
+                        adjusted_probabilities[index, negative_index],
+                        adjusted_probabilities[index, positive_index],
+                    )
+
+        return adjusted_probabilities
+
     def combine_component_probabilities(
         self,
         component_probabilities: list[np.ndarray],
@@ -351,9 +384,14 @@ class EnsembleSentimentPredictor:
             processed_texts
         )
 
-        return self.combine_component_probabilities(
+        combined_probabilities = self.combine_component_probabilities(
             component_probabilities,
             contrast_replacements=contrast_replacements,
+        )
+
+        return self.apply_final_negation_rule(
+            processed_texts,
+            combined_probabilities,
         )
 
     def predict(self, text: str) -> dict[str, object]:

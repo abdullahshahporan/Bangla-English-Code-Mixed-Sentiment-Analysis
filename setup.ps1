@@ -15,10 +15,19 @@ $downloadCachePath = Join-Path $projectRoot ".uv-cache"
 
 Set-Location -LiteralPath $projectRoot
 
-if (-not (Get-Command "uv" -ErrorAction SilentlyContinue)) {
-    Write-Host "The 'uv' command is required for automatic setup." -ForegroundColor Red
-    Write-Host "Install it from https://docs.astral.sh/uv/getting-started/installation/"
-    exit 1
+# A newly installed uv may not appear in the current PowerShell PATH until the
+# terminal is reopened. Check both PATH and uv's normal Windows install path.
+$uvCommand = Get-Command "uv" -ErrorAction SilentlyContinue
+if ($uvCommand) {
+    $uvExecutable = $uvCommand.Source
+} else {
+    $uvExecutable = Join-Path $env:USERPROFILE ".local\bin\uv.exe"
+    if (-not (Test-Path -LiteralPath $uvExecutable)) {
+        Write-Host "The 'uv' command is required for automatic setup." -ForegroundColor Red
+        Write-Host "Install it once with:"
+        Write-Host 'powershell -ExecutionPolicy Bypass -c "irm https://astral.sh/uv/install.ps1 | iex"' -ForegroundColor Yellow
+        exit 1
+    }
 }
 
 # A partially created Python 3.14 environment cannot install Gensim on Windows.
@@ -57,20 +66,31 @@ $env:UV_CACHE_DIR = $downloadCachePath
 
 if ($createEnvironment) {
     Write-Host "Creating a Python 3.12 environment..." -ForegroundColor Cyan
-    uv venv --python 3.12 $environmentPath
+    & $uvExecutable venv --python 3.12 $environmentPath
 }
 
 Write-Host "Installing project dependencies..." -ForegroundColor Cyan
-uv pip install --python $environmentPython -r (Join-Path $projectRoot "requirements.txt")
+& $uvExecutable pip install --python $environmentPython -r (Join-Path $projectRoot "requirements.txt")
+
+# Register the project interpreter as a notebook kernel. Keeping Jupyter's
+# writable folders inside the project avoids user-folder permission errors.
+$env:JUPYTER_CONFIG_DIR = Join-Path $projectRoot "tmp\jupyter_config"
+$env:JUPYTER_DATA_DIR = Join-Path $projectRoot "tmp\jupyter_data"
+$env:JUPYTER_RUNTIME_DIR = Join-Path $projectRoot "tmp\jupyter_runtime"
+$env:IPYTHONDIR = Join-Path $projectRoot "tmp\ipython"
+& $environmentPython -m ipykernel install --sys-prefix `
+    --name "bangla-code-mixed" `
+    --display-name "Python 3.12 (Bangla Code-Mixed)"
 
 $installedVersion = & $environmentPython --version
 Write-Host ""
 Write-Host "SETUP COMPLETE" -ForegroundColor Green
 Write-Host "Environment: $environmentPath"
 Write-Host "Python:      $installedVersion"
+Write-Host "Notebook:    Python 3.12 (Bangla Code-Mixed)"
 Write-Host ""
 Write-Host "Start the web application with:"
-Write-Host ".\.venv\Scripts\python.exe -m streamlit run app.py" -ForegroundColor Yellow
+Write-Host "powershell -ExecutionPolicy Bypass -File .\run.ps1" -ForegroundColor Yellow
 
 # Dependency archives can be very large and are no longer needed after a
 # successful installation. Removing this project-local cache keeps the folder

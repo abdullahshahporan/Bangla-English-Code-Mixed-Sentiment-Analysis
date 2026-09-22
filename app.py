@@ -32,12 +32,6 @@ with st.sidebar:
     st.write("**Corpus:** BnSentMix")
     st.write("**Classes:** Positive, Negative, Neutral, Mixed")
     st.write("**NLP flow:** Cleaning → Tokenization → Representation → Classification")
-    st.info(
-        "The final answer combines word and character TF-IDF, Word2Vec, "
-        "BiLSTM, and Transformer probabilities. A clearly stronger negative "
-        "clause after 'kintu' can decide a Mixed result."
-    )
-
 user_text = st.text_area(
     "Input sentence",
     height=120,

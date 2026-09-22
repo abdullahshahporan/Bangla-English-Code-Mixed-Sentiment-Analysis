@@ -176,6 +176,8 @@ Bangla-English-Code-Mixed-Sentiment-Analysis/
 │   ├── train_neural_models.py
 │   └── word_embeddings.py
 ├── app.py                     Streamlit web application
+├── check_environment.py       lightweight dependency check used by run.ps1
+├── run.ps1                    one-command dependency check and web launcher
 ├── run_project.py             command-line entry point
 ├── setup.ps1                  Windows environment setup
 ├── requirements.txt
@@ -238,11 +240,17 @@ models/transformer_best.pt
 
 ## Run the web application
 
-After the model artifacts are available, start Streamlit:
+After the model artifacts are available, run this single command from the
+project directory:
 
 ```powershell
-.\.venv\Scripts\python.exe -m streamlit run app.py
+powershell -ExecutionPolicy Bypass -File .\run.ps1
 ```
+
+The launcher always uses the project's Python 3.12 `.venv`, checks the required
+packages and model files, installs missing packages when possible, and then
+starts Streamlit. This avoids accidentally using a different Python environment
+that does not contain packages such as Gensim.
 
 Open the URL printed in the terminal, normally
 `http://localhost:8501`. Enter a Bangla-English sentence and select
