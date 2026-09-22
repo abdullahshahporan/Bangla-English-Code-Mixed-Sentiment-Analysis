@@ -1,4 +1,4 @@
-"""Beginner-friendly PyTorch models for Modules 4 and 5."""
+"""PyTorch implementations of the BiLSTM and Transformer components."""
 
 from __future__ import annotations
 
@@ -79,8 +79,8 @@ def encode_text(
     return token_ids, real_length
 
 
-class RecurrentSentimentClassifier(nn.Module):
-    """A vanilla RNN or BiLSTM four-class sentiment classifier."""
+class BiLSTMSentimentClassifier(nn.Module):
+    """A stacked bidirectional LSTM for four-class sentiment prediction."""
 
     def __init__(self, config: NeuralModelConfig) -> None:
         super().__init__()
@@ -90,32 +90,19 @@ class RecurrentSentimentClassifier(nn.Module):
             config.embedding_dimension,
             padding_idx=PAD_ID,
         )
-        self.is_bilstm = config.model_type == "bilstm"
-
         recurrent_dropout = config.dropout if config.number_of_layers > 1 else 0.0
-        if self.is_bilstm:
-            self.recurrent_layer: nn.Module = nn.LSTM(
-                input_size=config.embedding_dimension,
-                hidden_size=config.hidden_dimension,
-                num_layers=config.number_of_layers,
-                batch_first=True,
-                bidirectional=True,
-                dropout=recurrent_dropout,
-            )
-            classifier_input_size = config.hidden_dimension * 2
-        else:
-            self.recurrent_layer = nn.RNN(
-                input_size=config.embedding_dimension,
-                hidden_size=config.hidden_dimension,
-                num_layers=config.number_of_layers,
-                batch_first=True,
-                dropout=recurrent_dropout,
-                nonlinearity="tanh",
-            )
-            classifier_input_size = config.hidden_dimension
-
+        self.recurrent_layer = nn.LSTM(
+            input_size=config.embedding_dimension,
+            hidden_size=config.hidden_dimension,
+            num_layers=config.number_of_layers,
+            batch_first=True,
+            bidirectional=True,
+            dropout=recurrent_dropout,
+        )
         self.dropout = nn.Dropout(config.dropout)
-        self.classifier = nn.Linear(classifier_input_size, config.number_of_classes)
+        self.classifier = nn.Linear(
+            config.hidden_dimension * 2, config.number_of_classes
+        )
 
     def forward(self, input_ids: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
         """Return four unnormalized class scores for each sentence."""
@@ -129,15 +116,10 @@ class RecurrentSentimentClassifier(nn.Module):
         )
         _, hidden_output = self.recurrent_layer(packed_tokens)
 
-        if self.is_bilstm:
-            hidden_state, _ = hidden_output
-            sentence_vector = torch.cat(
-                (hidden_state[-2], hidden_state[-1]), dim=1
-            )
-        else:
-            hidden_state = hidden_output
-            sentence_vector = hidden_state[-1]
-
+        hidden_state, _ = hidden_output
+        sentence_vector = torch.cat(
+            (hidden_state[-2], hidden_state[-1]), dim=1
+        )
         return self.classifier(self.dropout(sentence_vector))
 
 
@@ -223,9 +205,8 @@ class TransformerSentimentClassifier(nn.Module):
 def create_neural_model(config: NeuralModelConfig) -> nn.Module:
     """Create a model from its saved configuration."""
 
-    if config.model_type in {"rnn", "bilstm"}:
-        return RecurrentSentimentClassifier(config)
+    if config.model_type == "bilstm":
+        return BiLSTMSentimentClassifier(config)
     if config.model_type == "transformer":
         return TransformerSentimentClassifier(config)
     raise ValueError(f"Unsupported model type: {config.model_type}")
-

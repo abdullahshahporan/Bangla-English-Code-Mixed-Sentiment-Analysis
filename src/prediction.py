@@ -10,7 +10,7 @@ import torch
 from src.config import CLASS_NAMES, MODEL_DIR
 from src.neural_models import NeuralModelConfig, create_neural_model, encode_text
 from src.preprocessing import preprocess_text
-from src.word_embeddings import mean_document_vector, tokenize, weighted_document_vectors
+from src.word_embeddings import weighted_document_vectors
 
 
 class EnsembleSentimentPredictor:
@@ -84,20 +84,11 @@ class EnsembleSentimentPredictor:
     def _predict_word2vec(self, processed_texts: list[str]) -> np.ndarray:
         """Return aligned Word2Vec-classifier probabilities."""
 
-        word2vec = self.word2vec_bundle["word2vec"]
-        if self.word2vec_bundle["representation"] == "weighted":
-            features = weighted_document_vectors(
-                pd.Series(processed_texts),
-                self.word2vec_bundle["tfidf_vectorizer"],
-                word2vec,
-            )
-        else:
-            features = np.vstack(
-                [
-                    mean_document_vector(tokenize(text), word2vec)
-                    for text in processed_texts
-                ]
-            )
+        features = weighted_document_vectors(
+            pd.Series(processed_texts),
+            self.word2vec_bundle["tfidf_vectorizer"],
+            self.word2vec_bundle["word2vec"],
+        )
 
         probabilities = self.word2vec_bundle["classifier"].predict_proba(features)
         return self._align_probabilities(

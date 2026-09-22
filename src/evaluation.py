@@ -21,6 +21,9 @@ from src.config import (
 )
 
 
+SELECTED_EXPERIMENT_IDS = {"M2.4", "M3.2", "M4.2", "M5.1", "M6.1"}
+
+
 def safe_file_name(name: str) -> str:
     """Convert an experiment name into a readable, filesystem-safe name."""
 
@@ -31,7 +34,7 @@ def calculate_metrics(
     true_labels: list[str] | pd.Series,
     predicted_labels: list[str] | pd.Series,
 ) -> dict[str, float]:
-    """Calculate the common metrics used in the final comparison."""
+    """Calculate the common metrics used for selected models and the ensemble."""
 
     macro_precision, macro_recall, macro_f1, _ = precision_recall_fscore_support(
         true_labels,
@@ -87,6 +90,9 @@ def update_metrics_file(new_results: pd.DataFrame) -> pd.DataFrame:
     metrics_path = RESULTS_DIR / "metrics.csv"
     if metrics_path.exists():
         existing_results = pd.read_csv(metrics_path)
+        existing_results = existing_results[
+            existing_results["Experiment ID"].isin(SELECTED_EXPERIMENT_IDS)
+        ]
         replaced_ids = set(new_results["Experiment ID"])
         existing_results = existing_results[
             ~existing_results["Experiment ID"].isin(replaced_ids)

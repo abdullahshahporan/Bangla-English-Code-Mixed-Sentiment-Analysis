@@ -83,7 +83,8 @@ def load_fixed_data_splits() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     ]
     if missing_paths:
         raise FileNotFoundError(
-            "Fixed data splits do not exist. Run `python -m src.preprocessing` first."
+            "Fixed data splits do not exist. Run notebook "
+            "`notebooks/01_preprocessing.ipynb` first."
         )
 
     return (
@@ -91,4 +92,3 @@ def load_fixed_data_splits() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         pd.read_csv(VALIDATION_DATA_PATH),
         pd.read_csv(TEST_DATA_PATH),
     )
-

@@ -14,7 +14,7 @@ final prediction.
 
 - Normalizes noisy Bangla-English user-generated text.
 - Preserves both Bangla and English Unicode characters during preprocessing.
-- Compares classical, embedding-based, recurrent, and attention-based methods.
+- Uses complementary sparse, embedding, recurrent, and attention-based models.
 - Combines four trained models into one final ensemble prediction.
 - Reports accuracy, macro precision, macro recall, and macro F1.
 - Includes confusion matrices and error analysis for model interpretation.
@@ -70,20 +70,37 @@ samples remain.
 Please consult the original dataset repository and paper for collection details,
 licensing information, and citation requirements.
 
-## NLP methods
+## Selected NLP models
 
-The experiments are grouped into four modelling families:
+The system contains only the four models used by the final ensemble:
 
-| Family | Models and representations |
+| Component | Purpose |
 | --- | --- |
-| Classical NLP | Bag-of-Words and TF-IDF with Naive Bayes or Logistic Regression |
-| Word embeddings | Mean Word2Vec and TF-IDF-weighted Word2Vec with Logistic Regression |
-| Recurrent networks | Vanilla RNN and Bidirectional LSTM with trainable embeddings |
-| Self-attention | Transformer encoder with positional encoding |
+| TF-IDF + Logistic Regression | Captures important unigram and bigram features in a sparse representation |
+| TF-IDF-weighted Word2Vec + Logistic Regression | Combines semantic token vectors with corpus-level term importance |
+| Bidirectional LSTM | Reads token sequences in both directions to model word order |
+| Transformer Encoder | Uses position-aware self-attention to model contextual relationships |
 
-The deployed ensemble uses the strongest practical artifacts from these
-experiments: TF-IDF Logistic Regression, TF-IDF-weighted Word2Vec, Bidirectional
-LSTM, and Transformer Encoder.
+### Selection from the NLP lab material
+
+The project uses the lab techniques that directly support code-mixed sentiment
+classification. Other lab exercises are intentionally excluded instead of being
+added without a task-specific reason.
+
+| Lab material | Use in this project | Decision |
+| --- | --- | --- |
+| Regex cleaning and tokenization | Unicode-safe normalization that preserves Bangla, Romanized Bangla, and negation words | Core preprocessing |
+| TF-IDF | Sparse unigram and bigram representation | Used by the ensemble |
+| Logistic Regression | Four-class probability prediction from TF-IDF and weighted Word2Vec vectors | Used by the ensemble |
+| Word2Vec | TF-IDF-weighted semantic document representation | Used by the ensemble |
+| Bidirectional LSTM | Forward and backward sequence modelling | Used by the ensemble |
+| Transformer encoder | Position-aware self-attention classifier | Used by the ensemble |
+
+English-only stemming, lemmatization, stop-word removal, and automatic spelling
+correction are not applied. They can remove sentiment-bearing words or alter
+Romanized Bangla incorrectly. N-gram language generation, Shannon's guessing
+game, POS tagging, autoregressive text generation, and Seq2Seq translation are
+also outside the scope of sentiment classification.
 
 ## Evaluation summary
 
@@ -118,19 +135,17 @@ Bangla-English-Code-Mixed-Sentiment-Analysis/
 │   ├── 01_preprocessing.ipynb
 │   ├── 02_classical_models.ipynb
 │   ├── 03_word_embeddings.ipynb
-│   ├── 04_rnn_bilstm.ipynb
+│   ├── 04_bilstm.ipynb
 │   ├── 05_transformer.ipynb
-│   └── 06_final_comparison.ipynb
+│   └── 06_final_ensemble.ipynb
 ├── results/
 │   ├── confusion_matrices/
 │   ├── error_analysis.csv
 │   └── metrics.csv
 ├── src/
-│   ├── classical_models.py
 │   ├── config.py
 │   ├── dataset_utils.py
 │   ├── evaluation.py
-│   ├── final_analysis.py
 │   ├── neural_models.py
 │   ├── prediction.py
 │   ├── preprocessing.py
@@ -143,8 +158,9 @@ Bangla-English-Code-Mixed-Sentiment-Analysis/
 └── README.md
 ```
 
-Shared implementation is kept in `src/` so the notebooks, command-line tools,
-and web application use the same processing and prediction logic.
+The main project workflow is visible in the notebooks. The `src/` directory
+contains only code reused by multiple notebooks or required by the web and
+command-line interfaces.
 
 ## Requirements
 
@@ -175,15 +191,16 @@ private `.env` files, and generated model binaries are excluded from Git.
 
 ## Generate the model artifacts
 
-Pretrained binary artifacts are not stored in the repository. Run the following
-commands from the project root after installation:
+Pretrained binary artifacts are not stored in the repository. Execute the six
+notebooks in numeric order from JupyterLab, or run them from PowerShell:
 
 ```powershell
-.\.venv\Scripts\python.exe run_project.py classical
-.\.venv\Scripts\python.exe run_project.py embeddings
-.\.venv\Scripts\python.exe run_project.py neural bilstm
-.\.venv\Scripts\python.exe run_project.py neural transformer
-.\.venv\Scripts\python.exe run_project.py finalize
+.\.venv\Scripts\python.exe -m jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=-1 notebooks\01_preprocessing.ipynb
+.\.venv\Scripts\python.exe -m jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=-1 notebooks\02_classical_models.ipynb
+.\.venv\Scripts\python.exe -m jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=-1 notebooks\03_word_embeddings.ipynb
+.\.venv\Scripts\python.exe -m jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=-1 notebooks\04_bilstm.ipynb
+.\.venv\Scripts\python.exe -m jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=-1 notebooks\05_transformer.ipynb
+.\.venv\Scripts\python.exe -m jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=-1 notebooks\06_final_ensemble.ipynb
 ```
 
 These commands generate the four artifacts required by the ensemble:
@@ -226,7 +243,7 @@ models jointly produce the final result.
 The same ensemble can be used without the web interface:
 
 ```powershell
-.\.venv\Scripts\python.exe run_project.py predict "service ta valo na"
+.\.venv\Scripts\python.exe run_project.py "service ta valo na"
 ```
 
 Example output:
@@ -241,34 +258,21 @@ Probabilities:
   Mixed   : ...
 ```
 
-## Reproduce the complete experiment
-
-Run the stages in order to recreate data preparation, every model comparison,
-and the final evaluation:
-
-```powershell
-.\.venv\Scripts\python.exe run_project.py preprocess
-.\.venv\Scripts\python.exe run_project.py classical
-.\.venv\Scripts\python.exe run_project.py embeddings
-.\.venv\Scripts\python.exe run_project.py neural rnn
-.\.venv\Scripts\python.exe run_project.py neural bilstm
-.\.venv\Scripts\python.exe run_project.py neural transformer
-.\.venv\Scripts\python.exe run_project.py finalize
-```
-
-The fixed training, validation, and test files in `data/splits/` support
-consistent comparison across model families.
-
 ## Notebooks
 
-The notebooks present the project in experimental order:
+The notebooks contain the main project stages in executable order:
 
 1. Text preprocessing and corpus analysis
-2. Classical NLP baselines
-3. Word2Vec document representations
-4. Vanilla RNN and Bidirectional LSTM
+2. TF-IDF Logistic Regression
+3. TF-IDF-weighted Word2Vec Logistic Regression
+4. Bidirectional LSTM
 5. Transformer encoder
-6. Final comparison, ensemble evaluation, and error analysis
+6. Final ensemble evaluation and error analysis
+
+Reusable functions and model classes remain in `src/`, preventing repeated code
+between notebooks 4 and 5 and ensuring that the saved models can be loaded by
+the application. Fixed files in `data/splits/` give all four components the same
+reproducible training, validation, and test partitions.
 
 Start JupyterLab with:
 
@@ -278,7 +282,7 @@ Start JupyterLab with:
 
 ## Outputs
 
-- `results/metrics.csv` contains the consolidated experiment comparison.
+- `results/metrics.csv` contains the four component results and final ensemble result.
 - `results/confusion_matrices/` contains class-level evaluation figures.
 - `results/error_analysis.csv` contains incorrectly classified test examples for
   qualitative analysis.

@@ -43,7 +43,7 @@ user_text = st.text_area(
     placeholder="Example: product ta good but delivery onek late",
 )
 
-if st.button("Analyze sentiment", type="primary", use_container_width=True):
+if st.button("Analyze sentiment", type="primary", width="stretch"):
     if not user_text.strip():
         st.warning("Please enter a sentence before clicking Analyze sentiment.")
     else:
@@ -80,7 +80,7 @@ if st.button("Analyze sentiment", type="primary", use_container_width=True):
             st.bar_chart(probability_table, y="Probability (%)")
             st.dataframe(
                 probability_table.style.format("{:.2f}%"),
-                use_container_width=True,
+                width="stretch",
             )
         except FileNotFoundError as error:
             st.error(

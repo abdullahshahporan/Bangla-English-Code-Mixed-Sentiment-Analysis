@@ -1,8 +1,7 @@
-"""Training loop for the RNN, BiLSTM, and Transformer experiments."""
+"""Shared training loop for the BiLSTM and Transformer components."""
 
 from __future__ import annotations
 
-import argparse
 import random
 from copy import deepcopy
 from dataclasses import dataclass
@@ -115,8 +114,8 @@ def train_neural_model(
 ) -> pd.DataFrame:
     """Train one neural experiment using validation Macro F1 and early stopping."""
 
-    if model_type not in {"rnn", "bilstm", "transformer"}:
-        raise ValueError("model_type must be rnn, bilstm, or transformer")
+    if model_type not in {"bilstm", "transformer"}:
+        raise ValueError("model_type must be bilstm or transformer")
 
     settings = settings or TrainingSettings()
     set_random_seeds()
@@ -202,7 +201,6 @@ def train_neural_model(
     model.load_state_dict(best_state)
 
     experiment_details = {
-        "rnn": ("M4.1", "Vanilla RNN", "Sequence Neural"),
         "bilstm": ("M4.2", "Bidirectional LSTM", "Sequence Neural"),
         "transformer": ("M5.1", "Transformer Encoder", "Self-Attention"),
     }
@@ -219,7 +217,6 @@ def train_neural_model(
         predictions=test_predictions,
     )
     result["Representation"] = {
-        "rnn": "Trainable Embedding + RNN",
         "bilstm": "Trainable Embedding + BiLSTM",
         "transformer": "Embedding + Positional Encoding",
     }[model_type]
@@ -228,45 +225,19 @@ def train_neural_model(
     result_data = pd.DataFrame([result])
     update_metrics_file(result_data)
 
-    checkpoint_path = None
-    if model_type in {"bilstm", "transformer"}:
-        checkpoint_path = MODEL_DIR / f"{model_type}_best.pt"
-        torch.save(
-            {
-                "model_state": best_state,
-                "config": config.to_dictionary(),
-                "vocabulary": vocabulary,
-                "class_names": CLASS_NAMES,
-                "validation_macro_f1": best_validation_f1,
-            },
-            checkpoint_path,
-        )
+    checkpoint_path = MODEL_DIR / f"{model_type}_best.pt"
+    torch.save(
+        {
+            "model_state": best_state,
+            "config": config.to_dictionary(),
+            "vocabulary": vocabulary,
+            "class_names": CLASS_NAMES,
+            "validation_macro_f1": best_validation_f1,
+        },
+        checkpoint_path,
+    )
 
     print(f"{experiment_name.upper()} COMPLETE")
     print(result_data.to_string(index=False))
-    if checkpoint_path is not None:
-        print(f"Best checkpoint saved to: {checkpoint_path}")
+    print(f"Best checkpoint saved to: {checkpoint_path}")
     return result_data
-
-
-def main() -> None:
-    """Read the requested model name from the command line."""
-
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("model", choices=("rnn", "bilstm", "transformer"))
-    parser.add_argument("--epochs", type=int, default=12)
-    parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--patience", type=int, default=3)
-    arguments = parser.parse_args()
-    train_neural_model(
-        arguments.model,
-        TrainingSettings(
-            epochs=arguments.epochs,
-            batch_size=arguments.batch_size,
-            patience=arguments.patience,
-        ),
-    )
-
-
-if __name__ == "__main__":
-    main()
