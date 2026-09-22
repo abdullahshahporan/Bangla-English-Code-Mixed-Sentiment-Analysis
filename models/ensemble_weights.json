@@ -1,0 +1,28 @@
+{
+    "model_order": [
+        "tfidf",
+        "word2vec",
+        "bilstm",
+        "transformer"
+    ],
+    "weights": [
+        0.8,
+        0.05,
+        0.1,
+        0.05
+    ],
+    "weights_by_model": {
+        "tfidf": 0.8,
+        "word2vec": 0.05,
+        "bilstm": 0.1,
+        "transformer": 0.05
+    },
+    "selection_metric": "Validation Macro F1",
+    "validation_macro_f1": 0.6896040308817303,
+    "validation_accuracy": 0.7188025563403969,
+    "validation_macro_precision": 0.6915430505015001,
+    "validation_macro_recall": 0.6881287919074842,
+    "search_step": 0.05,
+    "minimum_component_weight": 0.05,
+    "test_set_used_for_weight_selection": false
+}
